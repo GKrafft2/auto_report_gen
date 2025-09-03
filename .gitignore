@@ -1,0 +1,4 @@
+.venv
+/Rapport tempate
+*.json
+*.xml
