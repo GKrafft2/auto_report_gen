@@ -172,11 +172,12 @@ def create_json_ressources(stories_folder: str, spreads_folder: str):
     for spread in os.listdir(spreads_folder):
         spread_path = os.path.join(spreads_folder, spread)
         parent_stories = get_all_parentstory_from_spread(spread_path)
-        spread_story_dict[spread] = parent_stories
+        story_values = set(story_token_dict.values())
+        valid_parents = [p for p in parent_stories if p in story_values]
+        if valid_parents:
+            spread_story_dict[spread.split(".")[0].split("_")[-1]] = valid_parents
 
     with open("spread_story_mapping.json", "w") as f:
         json.dump(spread_story_dict, f, indent=4)
-        
+
     logging.info("JSON ressources created")
-
-
