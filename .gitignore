@@ -4,3 +4,4 @@ __pycache__/
 /Rapport tempate
 *.json
 *.xml
+*.zip
