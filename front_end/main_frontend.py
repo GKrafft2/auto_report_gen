@@ -25,7 +25,14 @@ import re
 from datetime import datetime
 from typing import Iterable, List
 
+import sys, os, docling
+import tempfile
+
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+
 import streamlit as st
+
+from I_love_chatgpt.chatgpt import summarize_document_hybrid
 
 # -------------------------------
 # Page Config
@@ -94,14 +101,23 @@ with right:
         if not uploaded_files:
             st.error("Please add at least one file.")
         else:
-            with st.spinner("Summarizing..."):
+            pdf_bytes = uploaded_files[0].getvalue()
+            # Save uploaded PDF to a temporary file
+            tmp = tempfile.NamedTemporaryFile(delete=False, suffix=".pdf")
+            tmp.write(pdf_bytes)
+            tmp.flush()
+            pdf_path = tmp.name
+            tmp.close()
+
+            with st.spinner("Analyzing and summarizing document..."):
                 try:
-                    if use_mock:
-                        result = summarize_mock(uploaded_files, target_words)
-                    else:
-                        result = summarize_via_api(
-                            endpoint, uploaded_files, target_words
-                        )
+                    # Hybrid path: uses Docling only if needed,
+                    # otherwise sends PDF directly to GPT.
+                    result = summarize_document_hybrid(
+                        pdf_bytes=pdf_bytes,
+                        target_words=target_words,
+                        pdf_path=pdf_path,
+                    )
                     st.session_state.summary = result or ""
                 except NotImplementedError as e:
                     st.warning(str(e))
@@ -109,7 +125,9 @@ with right:
                     st.error(f"Failed to summarize: {e}")
 
     summary_text = st.session_state.summary
-    st.text_area("", value=summary_text, height=260, label_visibility="collapsed")
+    st.text_area(
+        "Summary", value=summary_text, height=260, label_visibility="collapsed"
+    )
 
     col_a, col_b = st.columns(2)
     with col_a:

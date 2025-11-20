@@ -1,124 +1,217 @@
 import os
+import io
+import tempfile
+import hashlib
+
 from dotenv import load_dotenv
 from openai import OpenAI
-from docling.document import Document
-from docling.loader import PdfLoader
-from ..indesign_template_generation.rapport_creator import (
-    ArticleImportance,
-    choose_template,
+
+from pypdf import PdfReader
+from docling.document_converter import DocumentConverter
+from docling_core.types.doc import DoclingDocument
+
+from docling.datamodel.accelerator_options import AcceleratorDevice, AcceleratorOptions
+
+# Configure accelerator options for GPU
+accelerator_options = AcceleratorOptions(
+    device=AcceleratorDevice.CUDA,  # or AcceleratorDevice.AUTO
 )
 
-# Load environment variables
+# Load env
 load_dotenv()
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
-JSON_OUTPUT_FOLDER = "processed_docs"
+# Persistent Docling cache
+CACHE_DIR = os.path.join(os.path.dirname(__file__), "docling_cache")
+
+# Heavy converter for scanned/complex PDFs
+_heavy_converter = DocumentConverter()  # load OCR/layout models upfront
 
 
-def save_docling_document(
-    pdf_path: str, output_folder: str = JSON_OUTPUT_FOLDER
-) -> str:
+def _hash_bytes(pdf_bytes: bytes) -> str:
+    h = hashlib.sha256()
+    h.update(pdf_bytes)
+    return h.hexdigest()
+
+
+def _ensure_cache_dir():
+    os.makedirs(CACHE_DIR, exist_ok=True)
+
+
+# -------------------------------------------------------
+# 1. LIGHTWEIGHT PDF PROBE (fast complexity detection)
+# -------------------------------------------------------
+
+
+def pdf_has_text(pdf_bytes: bytes, min_chars=300) -> bool:
     """
-    Create a Docling Document from a PDF and save it as a JSON file
-    in an adjacent folder (default: 'processed_docs').
-
-    Args:
-        pdf_path (str): Path to the input PDF.
-        output_folder (str): Folder where JSON files are stored.
-
-    Returns:
-        str: Path to the saved JSON file.
+    Check if the PDF contains enough digital text to be considered non-scanned.
     """
-
-    # Check that file exists
-    if not os.path.exists(pdf_path):
-        raise FileNotFoundError(f"File not found: {pdf_path}")
-
-    # Check that file extension is .pdf (case-insensitive)
-    if not pdf_path.lower().endswith(".pdf"):
-        raise ValueError(f"File is not a PDF: {pdf_path}")
-
-    # Load and process PDF
-    loader = PdfLoader(pdf_path)
-    doc = loader.load()
-    document = Document.from_loader(doc)
-
-    # Ensure output folder exists (adjacent to the PDF)
-    base_dir = "."
-    save_dir = os.path.join(base_dir, output_folder)
-    os.makedirs(save_dir, exist_ok=True)
-
-    # Define output filename (same name, .json extension)
-    base_name = os.path.splitext(os.path.basename(pdf_path))[0]
-    json_path = os.path.join(save_dir, f"{base_name}.json")
-
-    # Save the document as JSON
-    document.save_json(json_path)
-
-    print(f"✅ Saved Docling document as JSON: {json_path}")
-    return json_path
+    try:
+        reader = PdfReader(io.BytesIO(pdf_bytes))
+        extracted = ""
+        for page in reader.pages[:3]:  # sample first 3 pages
+            t = page.extract_text() or ""
+            extracted += t
+        return len(extracted.strip()) >= min_chars
+    except Exception:
+        return False
 
 
-def load_docling_document(
-    pdf_path: str, output_folder: str = JSON_OUTPUT_FOLDER
-) -> Document:
+def pdf_character_count(pdf_bytes: bytes) -> int:
     """
-    Load a Docling document, either from an existing JSON serialization
-    or by creating and saving it from the PDF if not already processed.
-
-    Returns:
-        Document: The loaded Docling Document object.
+    Extract text cheaply & count characters.
     """
-    # Build the expected JSON path
-    base_dir = "."
-    save_dir = os.path.join(base_dir, output_folder)
-    base_name = os.path.splitext(os.path.basename(pdf_path))[0]
-    json_path = os.path.join(save_dir, f"{base_name}.json")
+    try:
+        reader = PdfReader(io.BytesIO(pdf_bytes))
+        text = ""
+        for page in reader.pages:
+            t = page.extract_text() or ""
+            text += t
+        return len(text)
+    except Exception:
+        return 0
 
-    # ✅ If JSON already exists → load it
+
+def pdf_is_small(pdf_bytes: bytes, max_size_mb=3) -> bool:
+    return len(pdf_bytes) <= max_size_mb * 1024 * 1024
+
+
+def pdf_is_simple_enough_for_gpt(pdf_bytes: bytes) -> bool:
+    """
+    Decide whether we can skip Docling entirely and send PDF directly to GPT.
+    """
+    if not pdf_is_small(pdf_bytes):
+        return False
+    if not pdf_has_text(pdf_bytes):
+        return False
+
+    chars = pdf_character_count(pdf_bytes)
+
+    # GPT can handle ~40K chars reliably
+    if chars > 40_000:
+        return False
+
+    return True
+
+
+# -------------------------------------------------------
+# 2. DOC LING CONVERSION (cached)
+# -------------------------------------------------------
+
+
+def _convert_bytes_to_docling(pdf_bytes: bytes) -> DoclingDocument:
+    with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp:
+        tmp.write(pdf_bytes)
+        tmp_path = tmp.name
+
+    try:
+        result = _heavy_converter.convert(tmp_path)
+        return result.document
+    finally:
+        try:
+            os.remove(tmp_path)
+        except:
+            pass
+
+
+def load_docling_document_cached(pdf_bytes: bytes) -> DoclingDocument:
+    """
+    Convert using Docling only once (content-hash cache).
+    """
+    _ensure_cache_dir()
+    key = _hash_bytes(pdf_bytes)
+    json_path = os.path.join(CACHE_DIR, f"{key}.json")
+
     if os.path.exists(json_path):
-        print(f"🔁 Found existing serialized Docling document: {json_path}")
-        return Document.load_json(json_path)
+        print(f"[Docling cache] HIT → {json_path}")
+        return DoclingDocument.load_from_json(json_path)
 
-    # 🚀 Otherwise → create it using save_docling_document()
-    print(f"🆕 No JSON found, processing PDF: {pdf_path}")
-    save_docling_document(pdf_path, output_folder)
-    return Document.load_json(json_path)
-
-
-# Extract number of pages from Docling Document
-def extract_num_pages_docling(docling_document: Document) -> int:
-    return len(docling_document.pages)
+    print(f"[Docling cache] MISS → Converting with Docling…")
+    doc = _convert_bytes_to_docling(pdf_bytes)
+    doc.save_as_json(json_path)
+    return doc
 
 
-# Summarize with GPT-5-Nano
-def summarize_pdf_docling(
-    docling_document: Document,
-    desired_text_length: int,
-    model: str = "gpt-5-nano",
-    temperature: float = 0.5,
-    max_output_tokens: int = 2000,
+# -------------------------------------------------------
+# 3. PUBLIC HYBRID API
+# -------------------------------------------------------
+
+
+def load_document_hybrid(pdf_bytes: bytes):
+    """
+    Returns either:
+        - { "mode": "gpt",  "bytes": pdf_bytes }
+        - { "mode": "docling", "doc": DoclingDocument }
+
+    depending on complexity.
+    """
+    if pdf_is_simple_enough_for_gpt(pdf_bytes):
+        return {"mode": "gpt", "bytes": pdf_bytes}
+
+    doc = load_docling_document_cached(pdf_bytes)
+    return {"mode": "docling", "doc": doc}
+
+
+# -------------------------------------------------------
+# 4. SUMMARIZATION
+# -------------------------------------------------------
+
+
+def summarize_document_hybrid(
+    pdf_bytes: bytes, target_words: int, pdf_path: str
 ) -> str:
-    text = docling_document.get_text()
+    """
+    Automatically chooses the best summarization workflow.
+    """
 
-    # Handle long documents: truncate if needed
-    if len(text) > 50000:
-        text = text[:50000] + "\n\n[Note: Text truncated for summarization.]"
+    route = load_document_hybrid(pdf_bytes)
+
+    # ---------------------------
+    # DIRECT GPT PDF HANDLING
+    # ---------------------------
+    if route["mode"] == "gpt":
+        print("🔵 Using direct GPT PDF ingestion (fast path)")
+        response = client.chat.completions.create(
+            model="gpt-5-nano",
+            messages=[
+                {"role": "system", "content": "Summarize this PDF."},
+                {
+                    "role": "user",
+                    "content": [
+                        {
+                            "type": "text",
+                            "text": f"Provide a {target_words}-word summary of the PDF.",
+                        },
+                        {
+                            "type": "file",
+                            "file_url": "{pdf_path}",
+                        },
+                    ],
+                },
+            ],
+        )
+        return response.choices[0].message.content.strip()
+
+    # ---------------------------
+    # DOCLING PATH
+    # ---------------------------
+    print("🟣 Using Docling conversion (complex or scanned PDF)")
+    doc = route["doc"]
+    text = doc.export_to_text()
+
+    # truncate very long docs
+    if len(text) > 50_000:
+        text = text[:50_000] + "\n\n[Note: truncated for summarization]"
 
     response = client.chat.completions.create(
-        model=model,
+        model="gpt-5-nano",
         messages=[
-            {
-                "role": "system",
-                "content": "You are an expert summarizer of complex PDF documents.",
-            },
+            {"role": "system", "content": "You are an expert document summarizer."},
             {
                 "role": "user",
-                "content": f"Summarize this document:\n{text}, the resulting summary should be around {desired_text_length} words.",
+                "content": f"Summarize the following document:\n{text}\n\nTarget: {target_words} words",
             },
         ],
-        temperature=temperature,
-        max_output_tokens=max_output_tokens,
     )
-
     return response.choices[0].message.content.strip()
