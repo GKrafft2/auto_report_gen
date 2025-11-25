@@ -6,6 +6,7 @@ readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
     "docling>=2.63.0",
+    "onnxruntime>=1.23.2",
     "openai>=2.8.1",
     "pypdf>=6.4.0",
     "streamlit>=1.51.0",
