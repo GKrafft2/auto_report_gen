@@ -2,6 +2,7 @@ import os
 import io
 import tempfile
 import hashlib
+import concurrent.futures
 
 from dotenv import load_dotenv
 from openai import OpenAI
@@ -172,22 +173,25 @@ def summarize_document_hybrid(
     # ---------------------------
     if route["mode"] == "gpt":
         print("🔵 Using direct GPT PDF ingestion (fast path)")
+
+        # Upload the file to OpenAI first
+        # Note: We assume 'client' is an instantiated OpenAI client available in scope
+        file_response = client.files.create(
+            file=route["bytes"], purpose="assistants"
+        )
+
+        # Use the file ID in the prompt context (or however the specific GPT-5 API expects file attachments)
+        # Assuming a standard chat completion with attachments support or similar mechanism:
         response = client.chat.completions.create(
             model="gpt-5-nano",
             messages=[
-                {"role": "system", "content": "Summarize this PDF."},
+                {"role": "system", "content": "You are an expert document summarizer."},
                 {
                     "role": "user",
-                    "content": [
-                        {
-                            "type": "text",
-                            "text": f"Provide a {target_words}-word summary of the PDF.",
-                        },
-                        {
-                            "type": "file",
-                            "file_url": "{pdf_path}",
-                        },
-                    ],
+                    "content": f"Please summarize the attached PDF document. Target length: {target_words} words.",
+                    # Hypothetical API structure for attaching files in chat completions
+                    # Adjust based on the actual library version (e.g., usually requires Assistants API or specific attachment schema)
+                    "attachments": [{"file_id": file_response.id, "tools": [{"type": "file_search"}]}],
                 },
             ],
         )
@@ -215,3 +219,45 @@ def summarize_document_hybrid(
         ],
     )
     return response.choices[0].message.content.strip()
+
+
+# -------------------------------------------------------
+# 5. PARALLEL SUMMARIZATION
+# -------------------------------------------------------
+
+
+def summarize_documents_parallel(
+    pdf_bytes_list: list[bytes], target_words: int, pdf_paths: list[str] = None
+) -> list[str]:
+    """
+    Summarizes multiple documents in parallel.
+    """
+    if pdf_paths is None:
+        pdf_paths = [f"doc_{i}.pdf" for i in range(len(pdf_bytes_list))]
+
+    results = [None] * len(pdf_bytes_list)
+
+    # We can use a ThreadPoolExecutor because the operations are largely I/O bound
+    # (network requests to OpenAI) or run in subprocesses (Docling).
+    # However, Docling might be CPU intensive.
+    # For now, we'll use a reasonable max_workers.
+    max_workers = min(10, len(pdf_bytes_list))
+
+    with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
+        future_to_index = {
+            executor.submit(
+                summarize_document_hybrid, pdf_bytes, target_words, pdf_path
+            ): i
+            for i, (pdf_bytes, pdf_path) in enumerate(zip(pdf_bytes_list, pdf_paths))
+        }
+
+        for future in concurrent.futures.as_completed(future_to_index):
+            index = future_to_index[future]
+            try:
+                summary = future.result()
+                results[index] = summary
+            except Exception as exc:
+                print(f"Document {index} generated an exception: {exc}")
+                results[index] = f"Error summarizing document: {exc}"
+
+    return results

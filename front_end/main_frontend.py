@@ -32,7 +32,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 import streamlit as st
 
-from I_love_chatgpt.chatgpt import summarize_document_hybrid
+from I_love_chatgpt.chatgpt import summarize_documents_parallel
 
 # -------------------------------
 # Page Config
@@ -101,24 +101,28 @@ with right:
         if not uploaded_files:
             st.error("Please add at least one file.")
         else:
-            pdf_bytes = uploaded_files[0].getvalue()
-            # Save uploaded PDF to a temporary file
-            tmp = tempfile.NamedTemporaryFile(delete=False, suffix=".pdf")
-            tmp.write(pdf_bytes)
-            tmp.flush()
-            pdf_path = tmp.name
-            tmp.close()
+            pdf_bytes_list = []
+            pdf_paths = []
 
-            with st.spinner("Analyzing and summarizing document..."):
+            for uploaded_file in uploaded_files:
+                pdf_bytes = uploaded_file.getvalue()
+                pdf_bytes_list.append(pdf_bytes)
+
+                # Save uploaded PDF to a temporary file
+                tmp = tempfile.NamedTemporaryFile(delete=False, suffix=".pdf")
+                tmp.write(pdf_bytes)
+                tmp.flush()
+                pdf_paths.append(tmp.name)
+                tmp.close()
+
+            with st.spinner(f"Analyzing and summarizing {len(uploaded_files)} documents in parallel..."):
                 try:
-                    # Hybrid path: uses Docling only if needed,
-                    # otherwise sends PDF directly to GPT.
-                    result = summarize_document_hybrid(
-                        pdf_bytes=pdf_bytes,
+                    results = summarize_documents_parallel(
+                        pdf_bytes_list=pdf_bytes_list,
                         target_words=target_words,
-                        pdf_path=pdf_path,
+                        pdf_paths=pdf_paths,
                     )
-                    st.session_state.summary = result or ""
+                    st.session_state.summary = "\n\n" + ("-" * 40) + "\n\n".join(results)
                 except NotImplementedError as e:
                     st.warning(str(e))
                 except Exception as e:
