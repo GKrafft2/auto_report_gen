@@ -39,151 +39,97 @@ from I_love_chatgpt.chatgpt import summarize_documents_parallel, parse_last_year
 # -------------------------------
 st.set_page_config(page_title="Document Summarizer", page_icon="📝", layout="wide")
 
-st.title("📝 Document Summarizer v1")
+st.title("📝 Document Summarizer v2")
 st.caption(
-    "Upload multiple documents, choose a target word count, generate a combined summary, and save it as .txt. Backend is abstracted."
+    "Two-step workflow: 1) Parse last year's report, 2) Upload new resources and link them to sections."
 )
 
 # -------------------------------
-# Sidebar Controls
+# Session State Init
 # -------------------------------
-with st.sidebar:
-    st.header("Settings")
-    target_words: int = st.slider(
-        "Target words", min_value=50, max_value=500, value=200, step=10
+if "step" not in st.session_state:
+    st.session_state.step = 1
+if "sections" not in st.session_state:
+    st.session_state.sections = {}  # {header: [text_parts]}
+if "section_links" not in st.session_state:
+    st.session_state.section_links = {}
+
+# -------------------------------
+# Step 1: Upload & Parse Last Year's Report
+# -------------------------------
+if st.session_state.step == 1:
+    st.header("Step 1: Upload Last Year's Report")
+    
+    uploaded_last_year = st.file_uploader(
+        "Upload Last Year's PDF",
+        type=["pdf"],
+        key="uploader_last_year"
     )
-    st.divider()
-    st.markdown(
-        "Welcome to the v1 of our summarizer app\nThe following files are supported: PDF"
-    )
 
-# -------------------------------
-# File Uploader
-# -------------------------------
-uploaded_files = st.file_uploader(
-    "Upload one or more files",
-    type=["pdf"],
-    accept_multiple_files=True,
-)
-
-uploaded_last_year_pdf = st.file_uploader(
-    "Upload last year's PDF",
-    type=["pdf"],
-    accept_multiple_files=False, # we want only one file
-)   
-
-
-def default_filename(prefix: str = "summary", word_count: int = 200) -> str:
-    ts = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-    return f"{prefix}_{word_count}w_{ts}.txt"
-
-
-# -------------------------------
-# UI Layout
-# -------------------------------
-left, right = st.columns([1, 1])
-
-with left:
-    st.subheader("Files")
-    if uploaded_files:
-        total_bytes = sum(
-            getattr(f, "size", 0) or len(f.getvalue()) for f in uploaded_files
-        )
-        mb = total_bytes / (1024 * 1024)
-        st.write(f"{len(uploaded_files)} file(s) • {mb:.2f} MB")
-        for f in uploaded_files:
-            st.caption(f"• {f.name}")
-    else:
-        st.info("No files selected yet.")
-
-    if uploaded_last_year_pdf:
-        st.divider()
-        st.subheader("Last Year's Report")
-        st.caption(f"• {uploaded_last_year_pdf.name}")
-
-        total_bytes = getattr(uploaded_last_year_pdf, "size", 0) or len(uploaded_last_year_pdf.getvalue()) 
+    if uploaded_last_year:
+        st.info(f"File uploaded: {uploaded_last_year.name}")
         
-        mb = total_bytes / (1024 * 1024)
-        st.write(f"1 file(s) • {mb:.2f} MB")
-        st.caption(f"• {uploaded_last_year_pdf.name}")
-        
-        go_last_year = st.button("Summarize Last Year", type="primary", use_container_width=True)
-        
-        if go_last_year:
-            if not uploaded_last_year_pdf:
-                st.error("Please add at least one file.")
-            else:
-                pdf_bytes_last_year = uploaded_last_year_pdf.getvalue()
-                with st.spinner(f"Parsing last year's report..."):
-                    try:
-                        results = parse_last_year_pdf(
-                            pdf_bytes=pdf_bytes_last_year   ,
-                        )
-                       
-                    except NotImplementedError as e:
-                        st.warning(str(e))
-                    except Exception as e:
-                        st.error(f"Failed to summarize: {e}")
-
-    go = st.button("Summarize", type="primary", use_container_width=True)
-
-with right:
-    st.subheader("Summary")
-    if "summary" not in st.session_state:
-        st.session_state.summary = ""
-
-    if go:
-        if not uploaded_files:
-            st.error("Please add at least one file.")
-        else:
-            pdf_bytes_list = []
-            pdf_paths = []
-
-            for uploaded_file in uploaded_files:
-                pdf_bytes = uploaded_file.getvalue()
-                pdf_bytes_list.append(pdf_bytes)
-
-                # Save uploaded PDF to a temporary file
-                tmp = tempfile.NamedTemporaryFile(delete=False, suffix=".pdf")
-                tmp.write(pdf_bytes)
-                tmp.flush()
-                pdf_paths.append(tmp.name)
-                tmp.close()
-
-            with st.spinner(f"Analyzing and summarizing {len(uploaded_files)} documents in parallel..."):
+        if st.button("Parse Report", type="primary"):
+            with st.spinner("Parsing last year's report..."):
                 try:
-                    results = summarize_documents_parallel(
-                        pdf_bytes_list=pdf_bytes_list,
-                        target_words=target_words,
-                        pdf_paths=pdf_paths,
-                    )
-                    st.session_state.summary = "\n\n" + ("-" * 40) + "\n\n".join(results)
-                except NotImplementedError as e:
-                    st.warning(str(e))
+                    # Call backend
+                    sections = parse_last_year_pdf(uploaded_last_year.getvalue())
+                    st.session_state.sections = sections
+                    st.session_state.step = 2
+                    st.rerun()
                 except Exception as e:
-                    st.error(f"Failed to summarize: {e}")
+                    st.error(f"Failed to parse: {e}")
 
-    summary_text = st.session_state.summary
-    st.text_area(
-        "Summary", value=summary_text, height=260, label_visibility="collapsed"
-    )
-
-    col_a, col_b = st.columns(2)
-    with col_a:
-        filename = default_filename(word_count=target_words)
-        st.download_button(
-            label="💾 Download .txt",
-            file_name=filename,
-            data=summary_text.encode("utf-8"),
-            mime="text/plain",
-            use_container_width=True,
-            disabled=not bool(summary_text),
+# -------------------------------
+# Step 2: Upload Resources & Link
+# -------------------------------
+elif st.session_state.step == 2:
+    st.header("Step 2: Upload Resources & Link")
+    
+    col1, col2 = st.columns([1, 2])
+    
+    with col1:
+        st.subheader("New Resources")
+        uploaded_resources = st.file_uploader(
+            "Upload New Resource Files",
+            type=["pdf"],
+            accept_multiple_files=True,
+            key="uploader_resources"
         )
-    with col_b:
-        if summary_text:
-            st.write(f"Words: {len(summary_text.split())}")
-        else:
-            st.write("Words: 0")
+        
+        resource_names = [f.name for f in uploaded_resources] if uploaded_resources else []
+        
+        if st.button("Start Over", type="secondary"):
+            st.session_state.step = 1
+            st.session_state.sections = {}
+            st.session_state.section_links = {}
+            st.rerun()
 
-st.divider()
-st.caption("Frontend only — connect your backend in `summarize_via_api()`.")
+    with col2:
+        st.subheader("Link Resources to Sections")
+        
+        if not st.session_state.sections:
+            st.warning("No sections found in the previous report.")
+        else:
+            # Display sections and linking UI
+            links = {}
+            for header, text_parts in st.session_state.sections.items():
+                # Preview text (first 200 chars)
+                full_text = " ".join(text_parts)
+                preview = full_text[:200] + "..." if len(full_text) > 200 else full_text
+                
+                with st.expander(f"Section: {header}", expanded=True):
+                    st.caption(preview)
+                    selected_files = st.multiselect(
+                        f"Select resources for '{header}'",
+                        options=resource_names,
+                        key=f"link_{header}"
+                    )
+                    links[header] = selected_files
+            
+            st.divider()
+            if st.button("Generate Report (Preview Links)", type="primary"):
+                st.session_state.section_links = links
+                st.success("Links saved! (Generation logic to be implemented)")
+                st.json(links)
+

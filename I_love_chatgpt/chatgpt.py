@@ -136,14 +136,7 @@ def parse_last_year_pdf(pdf_bytes: bytes, ):
         # Append the current chunk's text to the list for this header
         grouped_content[header].append(chunk.text)
 
-    # Iterate through the grouped content and print
-    for header, text_parts in grouped_content.items():
-        # Fuse the parts together with a newline (or space, depending on preference)
-        full_text = "\n".join(text_parts)
-        
-        print(f"--- Section: {header} ---")
-        print(full_text)
-        print("\n")
+    return grouped_content
     
 
 
