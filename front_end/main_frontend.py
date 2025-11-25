@@ -113,25 +113,13 @@ with left:
             if not uploaded_last_year_pdf:
                 st.error("Please add at least one file.")
             else:
-                pdf_bytes_last_year_list = []
-                pdf_paths = []
-
                 pdf_bytes_last_year = uploaded_last_year_pdf.getvalue()
-                pdf_bytes_last_year_list.append(pdf_bytes_last_year)
-
-                # Save uploaded PDF to a temporary file
-                tmp = tempfile.NamedTemporaryFile(delete=False, suffix=".pdf")
-                tmp.write(pdf_bytes_last_year)
-                tmp.flush()
-                pdf_paths.append(tmp.name)
-                tmp.close()
-
                 with st.spinner(f"Parsing last year's report..."):
                     try:
                         results = parse_last_year_pdf(
-                            pdf_bytes=pdf_bytes_last_year_list[0],
+                            pdf_bytes=pdf_bytes_last_year   ,
                         )
-                        st.session_state.summary = "\n\n" + ("-" * 40) + "\n\n".join(results)
+                       
                     except NotImplementedError as e:
                         st.warning(str(e))
                     except Exception as e:
