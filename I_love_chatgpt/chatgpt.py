@@ -11,6 +11,9 @@ from pypdf import PdfReader
 from docling.document_converter import DocumentConverter
 from docling_core.types.doc import DoclingDocument
 
+from docling.chunking import HierarchicalChunker
+from collections import defaultdict
+
 from docling.datamodel.accelerator_options import AcceleratorDevice, AcceleratorOptions
 
 # Configure accelerator options for GPU
@@ -115,6 +118,34 @@ def _convert_bytes_to_docling(pdf_bytes: bytes) -> DoclingDocument:
         except:
             pass
 
+def parse_last_year_pdf(pdf_bytes: bytes, ):
+    docling_doc = load_docling_document_cached(pdf_bytes)
+
+    # 2. Chunk the document
+    chunker = HierarchicalChunker()
+    chunks = chunker.chunk(docling_doc)
+
+    # Use a dictionary to group text by header
+    # Key = Header String, Value = List of text strings
+    grouped_content = defaultdict(list)
+
+    for chunk in chunks:
+        # Generate the header path string
+        header = " > ".join(chunk.meta.headings) if chunk.meta.headings else "No Header"
+        
+        # Append the current chunk's text to the list for this header
+        grouped_content[header].append(chunk.text)
+
+    # Iterate through the grouped content and print
+    for header, text_parts in grouped_content.items():
+        # Fuse the parts together with a newline (or space, depending on preference)
+        full_text = "\n".join(text_parts)
+        
+        print(f"--- Section: {header} ---")
+        print(full_text)
+        print("\n")
+    
+
 
 def load_docling_document_cached(pdf_bytes: bytes) -> DoclingDocument:
     """
@@ -175,23 +206,22 @@ def summarize_document_hybrid(
         print("🔵 Using direct GPT PDF ingestion (fast path)")
 
         # Upload the file to OpenAI first
-        # Note: We assume 'client' is an instantiated OpenAI client available in scope
-        file_response = client.files.create(
-            file=route["bytes"], purpose="assistants"
+        file = client.files.create(
+            file=open(pdf_path, "rb"),
+            purpose="user_data",
         )
 
-        # Use the file ID in the prompt context (or however the specific GPT-5 API expects file attachments)
-        # Assuming a standard chat completion with attachments support or similar mechanism:
         response = client.chat.completions.create(
             model="gpt-5-nano",
             messages=[
                 {"role": "system", "content": "You are an expert document summarizer."},
                 {
                     "role": "user",
-                    "content": f"Please summarize the attached PDF document. Target length: {target_words} words.",
-                    # Hypothetical API structure for attaching files in chat completions
-                    # Adjust based on the actual library version (e.g., usually requires Assistants API or specific attachment schema)
-                    "attachments": [{"file_id": file_response.id, "tools": [{"type": "file_search"}]}],
+                    "content": [
+                        {"type": "input_file",
+                        "file_id": file.id,},
+                        {"type": "input_text", "text": "Please summarize the attached PDF document. Target length: {target_words} words."}
+                    ]
                 },
             ],
         )

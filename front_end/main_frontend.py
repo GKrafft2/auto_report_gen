@@ -32,7 +32,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 import streamlit as st
 
-from I_love_chatgpt.chatgpt import summarize_documents_parallel
+from I_love_chatgpt.chatgpt import summarize_documents_parallel, parse_last_year_pdf
 
 # -------------------------------
 # Page Config
@@ -66,6 +66,12 @@ uploaded_files = st.file_uploader(
     accept_multiple_files=True,
 )
 
+uploaded_last_year_pdf = st.file_uploader(
+    "Upload last year's PDF",
+    type=["pdf"],
+    accept_multiple_files=False, # we want only one file
+)   
+
 
 def default_filename(prefix: str = "summary", word_count: int = 200) -> str:
     ts = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
@@ -89,6 +95,47 @@ with left:
             st.caption(f"• {f.name}")
     else:
         st.info("No files selected yet.")
+
+    if uploaded_last_year_pdf:
+        st.divider()
+        st.subheader("Last Year's Report")
+        st.caption(f"• {uploaded_last_year_pdf.name}")
+
+        total_bytes = getattr(uploaded_last_year_pdf, "size", 0) or len(uploaded_last_year_pdf.getvalue()) 
+        
+        mb = total_bytes / (1024 * 1024)
+        st.write(f"1 file(s) • {mb:.2f} MB")
+        st.caption(f"• {uploaded_last_year_pdf.name}")
+        
+        go_last_year = st.button("Summarize Last Year", type="primary", use_container_width=True)
+        
+        if go_last_year:
+            if not uploaded_last_year_pdf:
+                st.error("Please add at least one file.")
+            else:
+                pdf_bytes_last_year_list = []
+                pdf_paths = []
+
+                pdf_bytes_last_year = uploaded_last_year_pdf.getvalue()
+                pdf_bytes_last_year_list.append(pdf_bytes_last_year)
+
+                # Save uploaded PDF to a temporary file
+                tmp = tempfile.NamedTemporaryFile(delete=False, suffix=".pdf")
+                tmp.write(pdf_bytes_last_year)
+                tmp.flush()
+                pdf_paths.append(tmp.name)
+                tmp.close()
+
+                with st.spinner(f"Parsing last year's report..."):
+                    try:
+                        results = parse_last_year_pdf(
+                            pdf_bytes=pdf_bytes_last_year_list[0],
+                        )
+                        st.session_state.summary = "\n\n" + ("-" * 40) + "\n\n".join(results)
+                    except NotImplementedError as e:
+                        st.warning(str(e))
+                    except Exception as e:
+                        st.error(f"Failed to summarize: {e}")
 
     go = st.button("Summarize", type="primary", use_container_width=True)
 
