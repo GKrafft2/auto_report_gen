@@ -51,8 +51,8 @@ if "step" not in st.session_state:
     st.session_state.step = 1
 if "sections" not in st.session_state:
     st.session_state.sections = {}  # {header: [text_parts]}
-if "section_links" not in st.session_state:
-    st.session_state.section_links = {}
+if "section_enabled" not in st.session_state:
+    st.session_state.section_enabled = {}
 
 # -------------------------------
 # Step 1: Upload & Parse Last Year's Report
@@ -75,6 +75,8 @@ if st.session_state.step == 1:
                     # Call backend
                     sections = parse_last_year_pdf(uploaded_last_year.getvalue())
                     st.session_state.sections = sections
+                    # Initialize all sections as enabled by default
+                    st.session_state.section_enabled = {h: True for h in sections.keys()}
                     st.session_state.step = 2
                     st.rerun()
                 except Exception as e:
@@ -103,6 +105,7 @@ elif st.session_state.step == 2:
             st.session_state.step = 1
             st.session_state.sections = {}
             st.session_state.section_links = {}
+            st.session_state.section_enabled = {}
             st.rerun()
 
     with col2:
@@ -113,23 +116,45 @@ elif st.session_state.step == 2:
         else:
             # Display sections and linking UI
             links = {}
+            enabled_status = {}
+            
             for header, text_parts in st.session_state.sections.items():
                 # Preview text (first 200 chars)
                 full_text = " ".join(text_parts)
                 preview = full_text[:200] + "..." if len(full_text) > 200 else full_text
                 
                 with st.expander(f"Section: {header}", expanded=True):
-                    st.caption(preview)
-                    selected_files = st.multiselect(
-                        f"Select resources for '{header}'",
-                        options=resource_names,
-                        key=f"link_{header}"
+                    # Checkbox to enable/disable section
+                    is_enabled = st.checkbox(
+                        "Include in Summary", 
+                        value=st.session_state.section_enabled.get(header, True),
+                        key=f"enable_{header}"
                     )
-                    links[header] = selected_files
-            
+                    st.session_state.section_enabled[header] = is_enabled
+                    
+                    if is_enabled:
+                        st.caption(preview)
+                        selected_files = st.multiselect(
+                            f"Select resources for '{header}'",
+                            options=resource_names,
+                            key=f"link_{header}"
+                        )
+                        links[header] = selected_files
+                    else:
+                        st.caption("🚫 *Section excluded from summary*")
+
             st.divider()
             if st.button("Generate Report (Preview Links)", type="primary"):
                 st.session_state.section_links = links
+                
+                # Filter only enabled sections
+                final_plan = {
+                    h: links[h] 
+                    for h, enabled in st.session_state.section_enabled.items() 
+                    if enabled and h in links
+                }
+                
                 st.success("Links saved! (Generation logic to be implemented)")
-                st.json(links)
+                st.write("### Generation Plan")
+                st.json(final_plan)
 
