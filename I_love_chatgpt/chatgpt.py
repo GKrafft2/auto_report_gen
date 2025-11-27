@@ -390,6 +390,30 @@ def generate_section_summary(header: str, previous_text: str, new_pdf_bytes_list
 
     target_len_str = f"approximately {previous_word_count} words and {previous_sentence_count} sentences" if previous_word_count > 0 else "appropriate length"
 
+    # Determine instructions based on whether new content exists
+    if not new_content_text.strip():
+        # Case: No new info -> Reformulate generic
+        instructions = f"""
+1. Reformulate the content for the section "{header}" based on the previous year's text.
+2. Remove any specific references to the previous year (dates, specific past events).
+3. Maintain a generic tone indicating continuity (e.g., "we are continuing and happy to support...").
+4. Maintain the tone and style of the previous year's content, the answer MUST be in english.
+5. The response length MUST be {target_len_str}.
+6. Do not include the header in the output, just the body text.
+"""
+        new_content_display = "(No new information provided)"
+    else:
+        # Case: New info exists -> Synthesize
+        instructions = f"""
+1. Write the new content for the section "{header}".
+2. Maintain the tone and style of the previous year's content, the answer MUST be in english.
+3. The response length MUST be {target_len_str}.
+4. Synthesize the information from the "New Input Data".
+5. If the new data contradicts the old data, prioritize the new data.
+6. Do not include the header in the output, just the body text.
+"""
+        new_content_display = new_content_text
+
     prompt = f"""
 You are an expert report writer. Your task is to write an updated section for a report based on the previous year's content and new input data.
 
@@ -400,16 +424,11 @@ SECTION HEADER: {header}
 -------------------------------------------------------
 
 --- NEW INPUT DATA (To be incorporated) ---
-{new_content_text}
+{new_content_display}
 -------------------------------------------
 
 INSTRUCTIONS:
-1. Write the new content for the section "{header}".
-2. Maintain the tone and style of the previous year's content, the answer MUST be in english.
-3. The response length MUST be {target_len_str}.
-4. Synthesize the information from the "New Input Data".
-5. If the new data contradicts the old data, prioritize the new data.
-6. Do not include the header in the output, just the body text.
+{instructions}
 """
 
     logger.debug("\n[DEBUG] Generated Prompt:\n")
