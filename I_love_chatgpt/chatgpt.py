@@ -118,28 +118,90 @@ def _convert_bytes_to_docling(pdf_bytes: bytes) -> DoclingDocument:
         except:
             pass
 
-def parse_last_year_pdf(pdf_bytes: bytes, ):
+import pycountry
+from collections import defaultdict
+from docling.chunking import HierarchicalChunker
+from docling.datamodel.base_models import DocItemLabel
+
+import pycountry
+from collections import defaultdict
+from docling.chunking import HierarchicalChunker
+from docling.datamodel.base_models import DocItemLabel
+
+# --- HELPER: Country Detection ---
+def is_country_header(text: str) -> bool:
+    if not text or len(text.strip()) < 2: 
+        return False
+    clean_text = text.strip()
+    try:
+        pycountry.countries.search_fuzzy(clean_text)
+        return True
+    except (LookupError, Exception):
+        return False
+
+# --- PRE-PROCESSOR: Fuse Headers ---
+def fuse_consecutive_headers(doc):
+    texts = doc.texts
+    i = 0
+    
+    # Iterate through items
+    while i < len(texts) - 1:
+        current_item = texts[i]
+        next_item = texts[i+1]
+
+        # 1. Check for consecutive headers
+        if (current_item.label == DocItemLabel.SECTION_HEADER and 
+            next_item.label == DocItemLabel.SECTION_HEADER):
+            
+            # Check page consistency
+            page_current = current_item.prov[0].page_no if current_item.prov else -1
+            page_next = next_item.prov[0].page_no if next_item.prov else -2
+            
+            if page_current == page_next:
+                # 2. Check if the SECOND header is a Country
+                if is_country_header(next_item.text):
+                    
+                    # --- THE FIX IS HERE ---
+                    
+                    # Instead of keeping the first one, we keep the SECOND one
+                    # because the body text is likely attached (children) to the second one.
+                    
+                    # Update the Second Item (The Anchor)
+                    next_item.text = f"{current_item.text} - {next_item.text}"
+                    
+                    # "Nuke" the First Item (The Label)
+                    current_item.text = ""
+                    current_item.label = DocItemLabel.TEXT
+                    
+                    # Skip ahead since we processed this pair
+                    i += 2
+                    continue
+
+        i += 1
+        
+    return doc
+
+def parse_last_year_pdf(pdf_bytes: bytes):
     docling_doc = load_docling_document_cached(pdf_bytes)
 
-    # 2. Chunk the document
+    # Apply the fix before chunking
+    docling_doc = fuse_consecutive_headers(docling_doc)
+
     chunker = HierarchicalChunker()
     chunks = chunker.chunk(docling_doc)
 
-    # Use a dictionary to group text by header
-    # Key = Header String, Value = List of text strings
     grouped_content = defaultdict(list)
 
-    print("All unique headers found:")
-    for header in grouped_content.keys():
-        print(f"- {header}")
-
-
     for chunk in chunks:
-        # Generate the header path string
         header = " > ".join(chunk.meta.headings) if chunk.meta.headings else "No Header"
         
-        # Append the current chunk's text to the list for this header
-        grouped_content[header].append(chunk.text)
+        # Filter out empty strings that might result from the nuked header
+        if chunk.text.strip():
+            grouped_content[header].append(chunk.text)
+
+    print("--- Unique Headers Detected ---")
+    for h in grouped_content.keys():
+        print(f"| {h}")
 
     return grouped_content
     
