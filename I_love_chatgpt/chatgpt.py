@@ -398,8 +398,10 @@ def generate_section_summary(header: str, previous_text: str, new_pdf_bytes_list
 2. Remove any specific references to the previous year (dates, specific past events).
 3. Maintain a generic tone indicating continuity (e.g., "we are continuing and happy to support...").
 4. Maintain the tone and style of the previous year's content, the answer MUST be in english.
-5. The response length MUST be {target_len_str}.
-6. Do not include the header in the output, just the body text.
+5. Write from Ceres's point of view. Avoid bragging about the generosity of donations.
+6. You may include a sentence expressing how happy Ceres is to support the initiatives if appropriate.
+7. The response length MUST be {target_len_str}.
+8. Do not include the header in the output, just the body text.
 """
         new_content_display = "(No new information provided)"
     else:
@@ -407,10 +409,12 @@ def generate_section_summary(header: str, previous_text: str, new_pdf_bytes_list
         instructions = f"""
 1. Write the new content for the section "{header}".
 2. Maintain the tone and style of the previous year's content, the answer MUST be in english.
-3. The response length MUST be {target_len_str}.
-4. Synthesize the information from the "New Input Data".
-5. If the new data contradicts the old data, prioritize the new data.
-6. Do not include the header in the output, just the body text.
+3. Write from Ceres's point of view. Avoid bragging about the generosity of donations.
+4. You may include a sentence expressing how happy Ceres is to support the initiatives if appropriate.
+5. The response length MUST be {target_len_str}.
+6. Synthesize the information from the "New Input Data".
+7. If the new data contradicts the old data, prioritize the new data.
+8. Do not include the header in the output, just the body text.
 """
         new_content_display = new_content_text
 
