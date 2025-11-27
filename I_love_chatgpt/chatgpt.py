@@ -1,4 +1,5 @@
 import os
+import re
 import io
 import tempfile
 import hashlib
@@ -371,6 +372,18 @@ def generate_section_summary(header: str, previous_text: str, new_pdf_bytes_list
             new_content_text += f"\n--- New Resource {i+1} (Error) ---\nFailed to process.\n"
 
     # 2. Construct Prompt
+    # Calculate target word count based on previous text
+    previous_word_count = len(previous_text.split()) if previous_text else 0
+    
+    # Calculate target sentence count
+    # Simple split by period, question mark, exclamation mark followed by space or end of string
+    previous_sentence_count = len(re.split(r'[.!?]+', previous_text)) if previous_text else 0
+    # Adjust for empty strings from split
+    if previous_text:
+        previous_sentence_count = len([s for s in re.split(r'[.!?]+', previous_text) if s.strip()])
+
+    target_len_str = f"approximately {previous_word_count} words and {previous_sentence_count} sentences" if previous_word_count > 0 else "appropriate length"
+
     prompt = f"""
 You are an expert report writer. Your task is to write an updated section for a report based on the previous year's content and new input data.
 
@@ -386,10 +399,11 @@ SECTION HEADER: {header}
 
 INSTRUCTIONS:
 1. Write the new content for the section "{header}".
-2. Maintain the tone, style, and approximate length of the previous year's content.
-3. Synthesize the information from the "New Input Data".
-4. If the new data contradicts the old data, prioritize the new data.
-5. Do not include the header in the output, just the body text.
+2. Maintain the tone and style of the previous year's content.
+3. The response length MUST be {target_len_str}.
+4. Synthesize the information from the "New Input Data".
+5. If the new data contradicts the old data, prioritize the new data.
+6. Do not include the header in the output, just the body text.
 """
 
     print("\n[DEBUG] Generated Prompt:\n")
