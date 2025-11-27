@@ -129,6 +129,11 @@ def parse_last_year_pdf(pdf_bytes: bytes, ):
     # Key = Header String, Value = List of text strings
     grouped_content = defaultdict(list)
 
+    print("All unique headers found:")
+    for header in grouped_content.keys():
+        print(f"- {header}")
+
+
     for chunk in chunks:
         # Generate the header path string
         header = " > ".join(chunk.meta.headings) if chunk.meta.headings else "No Header"

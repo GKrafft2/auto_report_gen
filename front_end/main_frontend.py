@@ -120,11 +120,13 @@ elif st.session_state.step == 2:
                 if st.button("Select All", use_container_width=True):
                     for h in st.session_state.sections.keys():
                         st.session_state.section_enabled[h] = True
+                        st.session_state[f"enable_{h}"] = True
                     st.rerun()
             with col_unsel:
                 if st.button("Unselect All", use_container_width=True):
                     for h in st.session_state.sections.keys():
                         st.session_state.section_enabled[h] = False
+                        st.session_state[f"enable_{h}"] = False
                     st.rerun()
 
             # Display sections and linking UI
@@ -170,4 +172,6 @@ elif st.session_state.step == 2:
                 st.success("Links saved! (Generation logic to be implemented)")
                 st.write("### Generation Plan")
                 st.json(final_plan)
+
+                
 
