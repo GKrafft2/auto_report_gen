@@ -1,5 +1,6 @@
 import os
 import re
+import time
 import io
 import tempfile
 import hashlib
@@ -412,6 +413,9 @@ INSTRUCTIONS:
 
     # 3. Call OpenAI
     try:
+        print(f"[DEBUG] Sending request to OpenAI for section '{header}'...")
+        start_time = time.time()
+        
         response = client.chat.completions.create(
             model="gpt-5-nano",
             messages=[
@@ -419,6 +423,19 @@ INSTRUCTIONS:
                 {"role": "user", "content": prompt},
             ],
         )
+        
+        end_time = time.time()
+        duration = end_time - start_time
+        
+        # Extract token usage if available
+        usage = response.usage
+        input_tokens = usage.prompt_tokens if usage else "N/A"
+        output_tokens = usage.completion_tokens if usage else "N/A"
+        total_tokens = usage.total_tokens if usage else "N/A"
+        
+        print(f"[DEBUG] OpenAI Request Completed in {duration:.2f} seconds.")
+        print(f"[DEBUG] Token Usage - Input: {input_tokens}, Output: {output_tokens}, Total: {total_tokens}")
+        
         return response.choices[0].message.content.strip()
     except Exception as e:
         return f"Error generating summary: {e}"
