@@ -2,6 +2,11 @@ import os
 import re
 import time
 import io
+import logging
+
+# Configure logging
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
 import tempfile
 import hashlib
 import concurrent.futures
@@ -201,9 +206,9 @@ def parse_last_year_pdf(pdf_bytes: bytes):
         if chunk.text.strip():
             grouped_content[header].append(chunk.text)
 
-    print("--- Unique Headers Detected ---")
+    logger.info("--- Unique Headers Detected ---")
     for h in grouped_content.keys():
-        print(f"| {h}")
+        logger.info(f"| {h}")
 
     return grouped_content
     
@@ -218,10 +223,10 @@ def load_docling_document_cached(pdf_bytes: bytes) -> DoclingDocument:
     json_path = os.path.join(CACHE_DIR, f"{key}.json")
 
     if os.path.exists(json_path):
-        print(f"[Docling cache] HIT → {json_path}")
+        logger.info(f"[Docling cache] HIT → {json_path}")
         return DoclingDocument.load_from_json(json_path)
 
-    print(f"[Docling cache] MISS → Converting with Docling…")
+    logger.info(f"[Docling cache] MISS → Converting with Docling…")
     doc = _convert_bytes_to_docling(pdf_bytes)
     doc.save_as_json(json_path)
     return doc
@@ -265,7 +270,7 @@ def summarize_document_hybrid(
     # DIRECT GPT PDF HANDLING
     # ---------------------------
     if route["mode"] == "gpt":
-        print("🔵 Using direct GPT PDF ingestion (fast path)")
+        logger.info("🔵 Using direct GPT PDF ingestion (fast path)")
 
         # Upload the file to OpenAI first
         file = client.files.create(
@@ -292,7 +297,7 @@ def summarize_document_hybrid(
     # ---------------------------
     # DOCLING PATH
     # ---------------------------
-    print("🟣 Using Docling conversion (complex or scanned PDF)")
+    logger.info("🟣 Using Docling conversion (complex or scanned PDF)")
     doc = route["doc"]
     text = doc.export_to_text()
 
@@ -349,7 +354,7 @@ def summarize_documents_parallel(
                 summary = future.result()
                 results[index] = summary
             except Exception as exc:
-                print(f"Document {index} generated an exception: {exc}")
+                logger.error(f"Document {index} generated an exception: {exc}")
                 results[index] = f"Error summarizing document: {exc}"
 
     return results
@@ -359,7 +364,7 @@ def generate_section_summary(header: str, previous_text: str, new_pdf_bytes_list
     """
     Generates a new section summary based on the previous year's text and new linked PDF resources.
     """
-    print(f"--- Generating Summary for Section: {header} ---")
+    logger.info(f"--- Generating Summary for Section: {header} ---")
     
     # 1. Process new resources
     new_content_text = ""
@@ -369,7 +374,7 @@ def generate_section_summary(header: str, previous_text: str, new_pdf_bytes_list
             text = doc.export_to_text()
             new_content_text += f"\n--- New Resource {i+1} ---\n{text}\n"
         except Exception as e:
-            print(f"Error processing resource {i+1}: {e}")
+            logger.error(f"Error processing resource {i+1}: {e}")
             new_content_text += f"\n--- New Resource {i+1} (Error) ---\nFailed to process.\n"
 
     # 2. Construct Prompt
@@ -407,17 +412,17 @@ INSTRUCTIONS:
 6. Do not include the header in the output, just the body text.
 """
 
-    print("\n[DEBUG] Generated Prompt:\n")
-    print(prompt)
-    print("\n[DEBUG] End Prompt\n")
+    logger.info("\n[DEBUG] Generated Prompt:\n")
+    logger.info(prompt)
+    logger.info("\n[DEBUG] End Prompt\n")
 
     # 3. Call OpenAI
     try:
-        print(f"[DEBUG] Sending request to OpenAI for section '{header}'...")
+        logger.info(f"[DEBUG] Sending request to OpenAI for section '{header}'...")
         start_time = time.time()
         
         response = client.chat.completions.create(
-            model="gpt-5-nano",
+            model="gpt-5-mini",
             messages=[
                 {"role": "system", "content": "You are a helpful assistant that writes report sections."},
                 {"role": "user", "content": prompt},
@@ -433,8 +438,8 @@ INSTRUCTIONS:
         output_tokens = usage.completion_tokens if usage else "N/A"
         total_tokens = usage.total_tokens if usage else "N/A"
         
-        print(f"[DEBUG] OpenAI Request Completed in {duration:.2f} seconds.")
-        print(f"[DEBUG] Token Usage - Input: {input_tokens}, Output: {output_tokens}, Total: {total_tokens}")
+        logger.info(f"[DEBUG] OpenAI Request Completed in {duration:.2f} seconds.")
+        logger.info(f"[DEBUG] Token Usage - Input: {input_tokens}, Output: {output_tokens}, Total: {total_tokens}")
         
         return response.choices[0].message.content.strip()
     except Exception as e:

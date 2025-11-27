@@ -1,3 +1,9 @@
+import logging
+
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
 from transformers import AutoTokenizer, AutoModelForCausalLM
 import time
 import torch
@@ -44,7 +50,7 @@ class Apertus8b:
 
         new_tokens = generated_ids.shape[1] - model_inputs["input_ids"].shape[1]
 
-        print(f"estimated tokens per second = {new_tokens/(end-start):0.2f}")
+        logger.info(f"estimated tokens per second = {new_tokens/(end-start):0.2f}")
 
         # Get and decode the output
         output_ids = generated_ids[0][len(model_inputs.input_ids[0]) :]
