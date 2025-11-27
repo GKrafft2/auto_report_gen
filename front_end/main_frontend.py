@@ -114,6 +114,19 @@ elif st.session_state.step == 2:
         if not st.session_state.sections:
             st.warning("No sections found in the previous report.")
         else:
+            # Select/Unselect All Buttons
+            col_sel, col_unsel = st.columns(2)
+            with col_sel:
+                if st.button("Select All", use_container_width=True):
+                    for h in st.session_state.sections.keys():
+                        st.session_state.section_enabled[h] = True
+                    st.rerun()
+            with col_unsel:
+                if st.button("Unselect All", use_container_width=True):
+                    for h in st.session_state.sections.keys():
+                        st.session_state.section_enabled[h] = False
+                    st.rerun()
+
             # Display sections and linking UI
             links = {}
             enabled_status = {}
