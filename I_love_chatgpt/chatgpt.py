@@ -206,9 +206,9 @@ def parse_last_year_pdf(pdf_bytes: bytes):
         if chunk.text.strip():
             grouped_content[header].append(chunk.text)
 
-    logger.info("--- Unique Headers Detected ---")
+    logger.debug("--- Unique Headers Detected ---")
     for h in grouped_content.keys():
-        logger.info(f"| {h}")
+        logger.debug(f"| {h}")
 
     return grouped_content
     
