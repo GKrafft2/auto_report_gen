@@ -351,3 +351,60 @@ def summarize_documents_parallel(
                 results[index] = f"Error summarizing document: {exc}"
 
     return results
+
+
+def generate_section_summary(header: str, previous_text: str, new_pdf_bytes_list: list[bytes]) -> str:
+    """
+    Generates a new section summary based on the previous year's text and new linked PDF resources.
+    """
+    print(f"--- Generating Summary for Section: {header} ---")
+    
+    # 1. Process new resources
+    new_content_text = ""
+    for i, pdf_bytes in enumerate(new_pdf_bytes_list):
+        try:
+            doc = load_docling_document_cached(pdf_bytes)
+            text = doc.export_to_text()
+            new_content_text += f"\n--- New Resource {i+1} ---\n{text}\n"
+        except Exception as e:
+            print(f"Error processing resource {i+1}: {e}")
+            new_content_text += f"\n--- New Resource {i+1} (Error) ---\nFailed to process.\n"
+
+    # 2. Construct Prompt
+    prompt = f"""
+You are an expert report writer. Your task is to write an updated section for a report based on the previous year's content and new input data.
+
+SECTION HEADER: {header}
+
+--- PREVIOUS YEAR'S CONTENT (For Style and Context) ---
+{previous_text}
+-------------------------------------------------------
+
+--- NEW INPUT DATA (To be incorporated) ---
+{new_content_text}
+-------------------------------------------
+
+INSTRUCTIONS:
+1. Write the new content for the section "{header}".
+2. Maintain the tone, style, and approximate length of the previous year's content.
+3. Synthesize the information from the "New Input Data".
+4. If the new data contradicts the old data, prioritize the new data.
+5. Do not include the header in the output, just the body text.
+"""
+
+    print("\n[DEBUG] Generated Prompt:\n")
+    print(prompt)
+    print("\n[DEBUG] End Prompt\n")
+
+    # 3. Call OpenAI
+    try:
+        response = client.chat.completions.create(
+            model="gpt-5-nano",
+            messages=[
+                {"role": "system", "content": "You are a helpful assistant that writes report sections."},
+                {"role": "user", "content": prompt},
+            ],
+        )
+        return response.choices[0].message.content.strip()
+    except Exception as e:
+        return f"Error generating summary: {e}"

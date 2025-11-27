@@ -105,6 +105,7 @@ dependencies = [
     { name = "docling" },
     { name = "onnxruntime" },
     { name = "openai" },
+    { name = "pycountry" },
     { name = "pypdf" },
     { name = "streamlit" },
     { name = "torch" },
@@ -122,6 +123,7 @@ requires-dist = [
     { name = "docling", specifier = ">=2.63.0" },
     { name = "onnxruntime", specifier = ">=1.23.2" },
     { name = "openai", specifier = ">=2.8.1" },
+    { name = "pycountry", specifier = ">=24.6.1" },
     { name = "pypdf", specifier = ">=6.4.0" },
     { name = "streamlit", specifier = ">=1.51.0" },
     { name = "torch", specifier = ">=2.9.1", index = "https://download.pytorch.org/whl/cu130" },
@@ -396,7 +398,7 @@ wheels = [
 
 [[package]]
 name = "docling-core"
-version = "2.52.0"
+version = "2.53.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "jsonref" },
@@ -410,9 +412,9 @@ dependencies = [
     { name = "typer" },
     { name = "typing-extensions" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/9e/cd/85cf1d4767feed71cb42f1fd1167a8dd1b153be48f5e2a26cc1aa28c5ee6/docling_core-2.52.0.tar.gz", hash = "sha256:96a90b1c1232855f7efa9c94fb0b8b6daffd65d33ea4ef2ab248b475509c50b1", size = 189781, upload-time = "2025-11-20T14:16:30.12Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/f9/bd/6be5c2e927ac98fcfb8d5c01ec0a9cea8880d311484474ad565592c669c6/docling_core-2.53.0.tar.gz", hash = "sha256:8885eb2d1bb11765c60a653b3934eea15ff7e64ad9ea369bf72327196e28bb5d", size = 194275, upload-time = "2025-11-27T16:17:36.549Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/22/2a/6568c5275300e9c1cc731905d1e26faf8ced36fb0a5237d7102fd56183b3/docling_core-2.52.0-py3-none-any.whl", hash = "sha256:b4502dfc27c8a9f5cc0efc0664d2fa3c67128038505ebc894d0d231a403467d1", size = 190678, upload-time = "2025-11-20T14:16:28.414Z" },
+    { url = "https://files.pythonhosted.org/packages/d3/b7/c30f1f0f735d662c9abefe9f270571089ba95181308c1092cee62955a1d9/docling_core-2.53.0-py3-none-any.whl", hash = "sha256:13f0e8c1f5b2712b0989f69915262e53e173a44743366cc7778808e1c8621a25", size = 193260, upload-time = "2025-11-27T16:17:34.751Z" },
 ]
 
 [package.optional-dependencies]
@@ -1681,6 +1683,15 @@ wheels = [
 ]
 
 [[package]]
+name = "pycountry"
+version = "24.6.1"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/76/57/c389fa68c50590881a75b7883eeb3dc15e9e73a0fdc001cdd45c13290c92/pycountry-24.6.1.tar.gz", hash = "sha256:b61b3faccea67f87d10c1f2b0fc0be714409e8fcdcc1315613174f6466c10221", size = 6043910, upload-time = "2024-06-01T04:12:15.05Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/b1/ec/1fb891d8a2660716aadb2143235481d15ed1cbfe3ad669194690b0604492/pycountry-24.6.1-py3-none-any.whl", hash = "sha256:f1a4fb391cd7214f8eefd39556d740adcc233c778a27f8942c8dca351d6ce06f", size = 6335189, upload-time = "2024-06-01T04:11:49.711Z" },
+]
+
+[[package]]
 name = "pycparser"
 version = "2.23"
 source = { registry = "https://pypi.org/simple" }
@@ -2699,7 +2710,7 @@ wheels = [
 
 [[package]]
 name = "transformers"
-version = "4.57.2"
+version = "4.57.3"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "filelock" },
@@ -2713,9 +2724,9 @@ dependencies = [
     { name = "tokenizers" },
     { name = "tqdm" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/63/98/cf2515dba32791abe0540a252ccae7dc4f12fdeb03258182b6f014a78360/transformers-4.57.2.tar.gz", hash = "sha256:172a455ad5a570ecad89bea510a6c924c45fa90e46e859225fac07305d7946fc", size = 10141231, upload-time = "2025-11-24T17:54:14.293Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/dd/70/d42a739e8dfde3d92bb2fff5819cbf331fe9657323221e79415cd5eb65ee/transformers-4.57.3.tar.gz", hash = "sha256:df4945029aaddd7c09eec5cad851f30662f8bd1746721b34cc031d70c65afebc", size = 10139680, upload-time = "2025-11-25T15:51:30.139Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/d3/21/15c69470cf94857d4664e74554fa01248eb57428fed831929405a0a63b0a/transformers-4.57.2-py3-none-any.whl", hash = "sha256:0918df354853c9931a637792cec519e137aceb150effd4c7924d6b8d36918fab", size = 11993097, upload-time = "2025-11-24T17:54:10.472Z" },
+    { url = "https://files.pythonhosted.org/packages/6a/6b/2f416568b3c4c91c96e5a365d164f8a4a4a88030aa8ab4644181fdadce97/transformers-4.57.3-py3-none-any.whl", hash = "sha256:c77d353a4851b1880191603d36acb313411d3577f6e2897814f333841f7003f4", size = 11993463, upload-time = "2025-11-25T15:51:26.493Z" },
 ]
 
 [[package]]

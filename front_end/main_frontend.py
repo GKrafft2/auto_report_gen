@@ -32,7 +32,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 import streamlit as st
 
-from I_love_chatgpt.chatgpt import summarize_documents_parallel, parse_last_year_pdf
+from I_love_chatgpt.chatgpt import summarize_documents_parallel, parse_last_year_pdf, generate_section_summary
 
 # -------------------------------
 # Page Config
@@ -159,7 +159,8 @@ elif st.session_state.step == 2:
                         st.caption("🚫 *Section excluded from summary*")
 
             st.divider()
-            if st.button("Generate Report (Preview Links)", type="primary"):
+            st.divider()
+            if st.button("Generate Report", type="primary"):
                 st.session_state.section_links = links
                 
                 # Filter only enabled sections
@@ -169,9 +170,51 @@ elif st.session_state.step == 2:
                     if enabled and h in links
                 }
                 
-                st.success("Links saved! (Generation logic to be implemented)")
-                st.write("### Generation Plan")
-                st.json(final_plan)
+                # Create a map of filename -> bytes for easy access
+                # We need to seek(0) to ensure we read from the start if read before (though Streamlit usually handles this)
+                resource_map = {f.name: f.getvalue() for f in uploaded_resources}
+                
+                st.write("### Generating Report...")
+                progress_bar = st.progress(0)
+                total_sections = len(final_plan)
+                
+                generated_report = {}
+                
+                for i, (header, linked_files) in enumerate(final_plan.items()):
+                    st.write(f"Processing: **{header}**")
+                    
+                    # Get previous text
+                    previous_text_parts = st.session_state.sections.get(header, [])
+                    previous_text = "\n".join(previous_text_parts)
+                    
+                    # Get new PDF bytes
+                    new_pdf_bytes_list = [resource_map[fname] for fname in linked_files if fname in resource_map]
+                    
+                    # Generate Summary
+                    with st.spinner(f"Generating content for {header}..."):
+                        new_section_content = generate_section_summary(header, previous_text, new_pdf_bytes_list)
+                        generated_report[header] = new_section_content
+                    
+                    progress_bar.progress((i + 1) / total_sections)
+
+                st.success("Report Generation Complete!")
+                
+                st.divider()
+                st.header("Generated Report")
+                
+                full_report_text = ""
+                for header, content in generated_report.items():
+                    st.subheader(header)
+                    st.write(content)
+                    full_report_text += f"# {header}\n\n{content}\n\n"
+                
+                st.download_button(
+                    label="Download Full Report",
+                    data=full_report_text,
+                    file_name="generated_report.md",
+                    mime="text/markdown"
+                )
+
 
                 
 
