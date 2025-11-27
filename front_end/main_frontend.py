@@ -27,6 +27,7 @@ from typing import Iterable, List
 
 import sys, os, docling
 import tempfile
+import concurrent.futures
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
@@ -180,22 +181,35 @@ elif st.session_state.step == 2:
                 
                 generated_report = {}
                 
-                for i, (header, linked_files) in enumerate(final_plan.items()):
-                    st.write(f"Processing: **{header}**")
+                # Prepare tasks
+                tasks = []
+                with concurrent.futures.ThreadPoolExecutor(max_workers=5) as executor:
+                    future_to_header = {}
                     
-                    # Get previous text
-                    previous_text_parts = st.session_state.sections.get(header, [])
-                    previous_text = "\n".join(previous_text_parts)
+                    for header, linked_files in final_plan.items():
+                        # Get previous text
+                        previous_text_parts = st.session_state.sections.get(header, [])
+                        previous_text = "\n".join(previous_text_parts)
+                        
+                        # Get new PDF bytes
+                        new_pdf_bytes_list = [resource_map[fname] for fname in linked_files if fname in resource_map]
+                        
+                        # Submit task
+                        future = executor.submit(generate_section_summary, header, previous_text, new_pdf_bytes_list)
+                        future_to_header[future] = header
                     
-                    # Get new PDF bytes
-                    new_pdf_bytes_list = [resource_map[fname] for fname in linked_files if fname in resource_map]
-                    
-                    # Generate Summary
-                    with st.spinner(f"Generating content for {header}..."):
-                        new_section_content = generate_section_summary(header, previous_text, new_pdf_bytes_list)
-                        generated_report[header] = new_section_content
-                    
-                    progress_bar.progress((i + 1) / total_sections)
+                    # Process results as they complete
+                    for i, future in enumerate(concurrent.futures.as_completed(future_to_header)):
+                        header = future_to_header[future]
+                        try:
+                            st.write(f"Completed: **{header}**")
+                            new_section_content = future.result()
+                            generated_report[header] = new_section_content
+                        except Exception as e:
+                            st.error(f"Error generating {header}: {e}")
+                            generated_report[header] = f"Error: {e}"
+                        
+                        progress_bar.progress((i + 1) / total_sections)
 
                 st.success("Report Generation Complete!")
                 

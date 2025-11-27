@@ -405,16 +405,16 @@ SECTION HEADER: {header}
 
 INSTRUCTIONS:
 1. Write the new content for the section "{header}".
-2. Maintain the tone and style of the previous year's content.
+2. Maintain the tone and style of the previous year's content, the answer MUST be in english.
 3. The response length MUST be {target_len_str}.
 4. Synthesize the information from the "New Input Data".
 5. If the new data contradicts the old data, prioritize the new data.
 6. Do not include the header in the output, just the body text.
 """
 
-    logger.info("\n[DEBUG] Generated Prompt:\n")
-    logger.info(prompt)
-    logger.info("\n[DEBUG] End Prompt\n")
+    logger.debug("\n[DEBUG] Generated Prompt:\n")
+    logger.debug(prompt)
+    logger.debug("\n[DEBUG] End Prompt\n")
 
     # 3. Call OpenAI
     try:
