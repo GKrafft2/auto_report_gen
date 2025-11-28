@@ -402,6 +402,8 @@ def generate_section_summary(header: str, previous_text: str, new_pdf_bytes_list
 6. You may include a sentence expressing how happy Ceres is to support the initiatives if appropriate.
 7. The response length MUST be {target_len_str}.
 8. Do not include the header in the output, just the body text.
+9. Keep the content high-level and avoid unnecessary details.
+10. STRICTLY FORBIDDEN: Do not mention any specific figures, numbers, or amounts of money.
 """
         new_content_display = "(No new information provided)"
     else:
@@ -416,6 +418,8 @@ def generate_section_summary(header: str, previous_text: str, new_pdf_bytes_list
 7. If the new data contradicts the old data, prioritize the new data.
 7. If the new data contradicts the old data, prioritize the new data.
 8. Do not include the header in the output, just the body text.
+9. Keep the content high-level and avoid unnecessary details.
+10. STRICTLY FORBIDDEN: Do not mention any specific figures, numbers, or amounts of money.
 """
         new_content_display = new_content_text
 
