@@ -360,7 +360,7 @@ def summarize_documents_parallel(
     return results
 
 
-def generate_section_summary(header: str, previous_text: str, new_pdf_bytes_list: list[bytes]) -> str:
+def generate_section_summary(header: str, previous_text: str, new_pdf_bytes_list: list[bytes], manual_comments: str = "") -> str:
     """
     Generates a new section summary based on the previous year's text and new linked PDF resources.
     """
@@ -414,9 +414,20 @@ def generate_section_summary(header: str, previous_text: str, new_pdf_bytes_list
 5. The response length MUST be {target_len_str}.
 6. Synthesize the information from the "New Input Data".
 7. If the new data contradicts the old data, prioritize the new data.
+7. If the new data contradicts the old data, prioritize the new data.
 8. Do not include the header in the output, just the body text.
 """
         new_content_display = new_content_text
+
+    # Add manual comments to instructions if present
+    manual_comments_section = ""
+    if manual_comments.strip():
+        manual_comments_section = f"""
+--- MANUAL COMMENTS / INSTRUCTIONS ---
+{manual_comments}
+--------------------------------------
+"""
+        instructions += "\n9. IMPORTANT: Follow the specific instructions provided in the 'MANUAL COMMENTS / INSTRUCTIONS' section above."
 
     prompt = f"""
 You are an expert report writer. Your task is to write an updated section for a report based on the previous year's content and new input data.
@@ -430,6 +441,8 @@ SECTION HEADER: {header}
 --- NEW INPUT DATA (To be incorporated) ---
 {new_content_display}
 -------------------------------------------
+
+{manual_comments_section}
 
 INSTRUCTIONS:
 {instructions}

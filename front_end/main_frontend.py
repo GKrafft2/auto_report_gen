@@ -54,6 +54,8 @@ if "sections" not in st.session_state:
     st.session_state.sections = {}  # {header: [text_parts]}
 if "section_enabled" not in st.session_state:
     st.session_state.section_enabled = {}
+if "section_comments" not in st.session_state:
+    st.session_state.section_comments = {}
 
 # -------------------------------
 # Step 1: Upload & Parse Last Year's Report
@@ -107,6 +109,7 @@ elif st.session_state.step == 2:
             st.session_state.sections = {}
             st.session_state.section_links = {}
             st.session_state.section_enabled = {}
+            st.session_state.section_comments = {}
             st.rerun()
 
     with col2:
@@ -150,6 +153,17 @@ elif st.session_state.step == 2:
                     
                     if is_enabled:
                         st.caption(preview)
+                        
+                        # Manual Comments / Instructions
+                        comment = st.text_area(
+                            "Manual Comments / Instructions (Optional)",
+                            value=st.session_state.section_comments.get(header, ""),
+                            key=f"comment_{header}",
+                            height=100,
+                            placeholder="e.g., 'Make this section very brief', 'Emphasize the new partnership'..."
+                        )
+                        st.session_state.section_comments[header] = comment
+
                         selected_files = st.multiselect(
                             f"Select resources for '{header}'",
                             options=resource_names,
@@ -194,8 +208,11 @@ elif st.session_state.step == 2:
                         # Get new PDF bytes
                         new_pdf_bytes_list = [resource_map[fname] for fname in linked_files if fname in resource_map]
                         
+                        # Get manual comment
+                        manual_comment = st.session_state.section_comments.get(header, "")
+
                         # Submit task
-                        future = executor.submit(generate_section_summary, header, previous_text, new_pdf_bytes_list)
+                        future = executor.submit(generate_section_summary, header, previous_text, new_pdf_bytes_list, manual_comment)
                         future_to_header[future] = header
                     
                     # Process results as they complete
