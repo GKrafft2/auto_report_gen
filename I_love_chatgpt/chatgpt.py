@@ -232,6 +232,27 @@ def load_docling_document_cached(pdf_bytes: bytes) -> DoclingDocument:
     return doc
 
 
+def extract_clean_text(doc: DoclingDocument) -> str:
+    """
+    Extracts text from the document, filtering out noise like headers, footers, and captions.
+    """
+    clean_text = []
+    allowed_labels = {
+        DocItemLabel.TEXT,
+        DocItemLabel.SECTION_HEADER,
+        DocItemLabel.LIST_ITEM,
+        DocItemLabel.TABLE,
+        DocItemLabel.CODE,
+        DocItemLabel.FORMULA,
+    }
+
+    for item in doc.texts:
+        if item.label in allowed_labels:
+            clean_text.append(item.text)
+    
+    return "\n".join(clean_text)
+
+
 # -------------------------------------------------------
 # 3. PUBLIC HYBRID API
 # -------------------------------------------------------
@@ -299,7 +320,7 @@ def summarize_document_hybrid(
     # ---------------------------
     logger.info("🟣 Using Docling conversion (complex or scanned PDF)")
     doc = route["doc"]
-    text = doc.export_to_text()
+    text = extract_clean_text(doc)
 
     # truncate very long docs
     if len(text) > 50_000:
@@ -371,7 +392,7 @@ def generate_section_summary(header: str, previous_text: str, new_pdf_bytes_list
     for i, pdf_bytes in enumerate(new_pdf_bytes_list):
         try:
             doc = load_docling_document_cached(pdf_bytes)
-            text = doc.export_to_text()
+            text = extract_clean_text(doc)
             new_content_text += f"\n--- New Resource {i+1} ---\n{text}\n"
         except Exception as e:
             logger.error(f"Error processing resource {i+1}: {e}")
