@@ -10,7 +10,7 @@ Writing annual reports each year often involves reusing the same structure, upda
 
 *   **Parsing last year’s report** into structured sections using **Docling**.
 *   **Allowing you to map new project reports** (PDFs) to these sections via a **Streamlit** interface.
-*   **Automatically generating updated text** through a customized prompt pipeline powered by the ChatGPT API (model: **GPT-5 Mini**).
+*   **Automatically generating updated text** through a customized prompt pipeline powered by the ChatGPT API (model: **GPT-6 Luna**).
 *   **Running all section generations concurrently** for speed.
 
 ---
@@ -42,7 +42,7 @@ For every section, a tailored prompt is assembled containing:
 
 ### **6. Parallel Execution**
 *   All section prompts are sent to the ChatGPT API **in parallel**.
-*   Uses **GPT-5 Mini** (or configured model) for high-quality text generation.
+*   Uses **GPT-6 Luna** (or configured model) for high-quality text generation.
 
 ---
 
@@ -122,7 +122,7 @@ This project uses `uv` for fast dependency management, but can also be installed
 
 ## **🤖 Model & API**
 
-*   **Models**: Defaults to `gpt-5-mini` and `gpt-5-nano` (ensure your API key has access to these models).
+*   **Models**: Uses `gpt-6-luna` (ensure your API key has access to this model).
 *   **Docling**: Used for robust PDF parsing and chunking.
 
 ---

@@ -248,7 +248,7 @@ INSTRUCTIONS:
         start_time = time.time()
 
         response = client.chat.completions.create(
-            model="gpt-5-mini",
+            model="gpt-6-luna",
             messages=[
                 {"role": "system", "content": "You are a helpful assistant that writes report sections."},
                 {"role": "user", "content": prompt},
