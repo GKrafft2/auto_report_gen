@@ -2,7 +2,7 @@
 Streamlit UI for auto_report_gen.
 
 Run from the repository root:
-  uv run streamlit run front_end/main_frontend.py
+  uv run python -m streamlit run front_end/main_frontend.py
 """
 
 import concurrent.futures

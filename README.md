@@ -102,11 +102,12 @@ This project uses `uv` for fast dependency management, but can also be installed
 2.  **Run the Streamlit App**:
     ```bash
     # If using uv
-    uv run streamlit run front_end/main_frontend.py
+    uv run python -m streamlit run front_end/main_frontend.py
 
     # If using standard pip/venv
-    streamlit run front_end/main_frontend.py
+    python -m streamlit run front_end/main_frontend.py
     ```
+    Launching through `python -m` avoids Windows Smart App Control blocking the unsigned `streamlit.exe` launcher.
 
 3.  **Workflow**:
     *   **Step 1**: Upload Last Year's PDF and click "Parse Report".
