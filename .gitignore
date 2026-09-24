@@ -3,8 +3,5 @@
 __pycache__/
 docling_cache/
 offload_cache/
-/Rapport tempate
 *.json
-*.xml
-*.zip
 *.pdf
