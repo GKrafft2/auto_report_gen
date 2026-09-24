@@ -75,7 +75,7 @@ class Apertus8bgguf_llamcpp(Apertus8b):
     def send_prompt(self, prompt: str):
 
         response = self.model(
-            "What are the benefits of renewable energy?",
+            prompt,
             max_tokens=100,  # Maximum number of tokens to generate
             temperature=0.7,  # Creativity level
         )
@@ -110,7 +110,7 @@ class llama318bbgguf_llamcpp(Apertus8b):
     def send_prompt(self, prompt: str):
 
         response = self.model(
-            "What are the benefits of renewable energy?",
+            prompt,
             max_tokens=100,  # Maximum number of tokens to generate
             temperature=0.7,  # Creativity level
         )

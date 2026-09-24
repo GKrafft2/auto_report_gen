@@ -132,7 +132,9 @@ def compute_word_count_per_text():
                     else:
                         num_words_per_text[token] += value
                     break
-        json.dump(num_words_per_text, open("num_words_per_text.json", "w"), indent=4)
+
+    with open("num_words_per_text.json", "w") as f:
+        json.dump(num_words_per_text, f, indent=4)
 
 
 def create_json_ressources(stories_folder: str, spreads_folder: str):

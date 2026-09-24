@@ -67,7 +67,7 @@ This project uses `uv` for fast dependency management, but can also be installed
 
 2.  **Clone the repository**:
     ```bash
-    git clone https://github.com/your-username/auto_report_gen.git
+    git clone https://github.com/GKrafft2/auto_report_gen.git
     cd auto_report_gen
     ```
 
@@ -80,7 +80,7 @@ This project uses `uv` for fast dependency management, but can also be installed
 
 1.  **Clone the repository**:
     ```bash
-    git clone https://github.com/your-username/auto_report_gen.git
+    git clone https://github.com/GKrafft2/auto_report_gen.git
     cd auto_report_gen
     ```
 

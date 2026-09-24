@@ -1,46 +1,26 @@
-# streamlit_document_summarizer_frontend.py
 """
-Frontend-only Streamlit UI for summarizing multiple documents.
-Backend summarization is intentionally abstracted — plug in your own API call
-inside `summarize_via_api(...)`.
+Streamlit UI for auto_report_gen.
 
-How to run:
-  pip install streamlit
-  streamlit run streamlit_document_summarizer_frontend.py
-
-Optional extras if you want to test the mock summarizer (no backend):
-  - Works on .txt/.md files only (reads text client-side) just to demo the UI
-
-What this UI does:
-  - Lets you upload multiple files (txt/md/pdf/docx)
-  - Pick a target word count
-  - Click "Summarize" to call your backend (or a mock summarizer)
-  - Shows the resulting summary
-  - Lets you download the summary as a .txt file
+Run from the repository root:
+  uv run streamlit run front_end/main_frontend.py
 """
 
-from __future__ import annotations
-
-import re
-from datetime import datetime
-from typing import Iterable, List
-
-import sys, os, docling
-import tempfile
 import concurrent.futures
+import os
+import sys
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 import streamlit as st
 
-from I_love_chatgpt.chatgpt import summarize_documents_parallel, parse_last_year_pdf, generate_section_summary
+from I_love_chatgpt.chatgpt import generate_section_summary, parse_last_year_pdf
 
 # -------------------------------
 # Page Config
 # -------------------------------
-st.set_page_config(page_title="Document Summarizer", page_icon="📝", layout="wide")
+st.set_page_config(page_title="Annual Report Generator", page_icon="📝", layout="wide")
 
-st.title("📝 Document Summarizer v2")
+st.title("📝 Annual Report Generator")
 st.caption(
     "Two-step workflow: 1) Parse last year's report, 2) Upload new resources and link them to sections."
 )
@@ -174,7 +154,6 @@ elif st.session_state.step == 2:
                         st.caption("🚫 *Section excluded from summary*")
 
             st.divider()
-            st.divider()
             if st.button("Generate Report", type="primary"):
                 st.session_state.section_links = links
                 
@@ -185,9 +164,7 @@ elif st.session_state.step == 2:
                     if enabled and h in links
                 }
                 
-                # Create a map of filename -> bytes for easy access
-                # We need to seek(0) to ensure we read from the start if read before (though Streamlit usually handles this)
-                resource_map = {f.name: f.getvalue() for f in uploaded_resources}
+                resource_map = {f.name: f.getvalue() for f in uploaded_resources or []}
                 
                 st.write("### Generating Report...")
                 progress_bar = st.progress(0)
@@ -195,8 +172,6 @@ elif st.session_state.step == 2:
                 
                 generated_report = {}
                 
-                # Prepare tasks
-                tasks = []
                 with concurrent.futures.ThreadPoolExecutor(max_workers=5) as executor:
                     future_to_header = {}
                     
@@ -245,7 +220,3 @@ elif st.session_state.step == 2:
                     file_name="generated_report.md",
                     mime="text/markdown"
                 )
-
-
-                
-

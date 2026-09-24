@@ -76,7 +76,11 @@ def generate_file_uid(stories_folder_path: str, spreads_folder_path: str):
 def get_current_number_of_pages(spreads_folder_path: str):
 
     n_spreads = len(
-        [name for name in os.listdir(spreads_folder_path) if os.path.isfile(name)]
+        [
+            name
+            for name in os.listdir(spreads_folder_path)
+            if os.path.isfile(os.path.join(spreads_folder_path, name))
+        ]
     )
     logging.debug("Number of spreads: %d", n_spreads)
     is_multiple_of_8 = n_spreads % 8 == 0
@@ -90,8 +94,10 @@ def create_new_spread(
     selected_template: str,
 ):
     # TODO: make sure that the .json are all up to date
-    story_token_mapping = json.loads("story_token_mapping.json")
-    spread_story_mapping = bidict(json.loads("spread_story_mapping.json"))
+    with open("story_token_mapping.json") as f:
+        story_token_mapping = json.load(f)
+    with open("spread_story_mapping.json") as f:
+        spread_story_mapping = bidict(json.load(f))
     story_spread_mapping = spread_story_mapping.inverse
 
     relevant_story_uid = story_token_mapping["[" + selected_template + "]"]
